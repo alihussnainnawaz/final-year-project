@@ -13,7 +13,7 @@ from flask_cors import CORS
 from config import config
 from prompt_refiner import refine_prompt
 from debate_engine import run_debate
-from code_generator import generate_full_project
+from code_generator import generate_full_project, generate_single_file
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -76,6 +76,22 @@ def _require_json_field(field: str, min_len: int = 5) -> tuple[str | None, tuple
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+def _safe_error(exc: Exception) -> str:
+    """
+    Return a user-safe error message that does not expose internal stack details.
+    OpenAI client errors carry a human-readable message that is safe to forward;
+    all other exceptions get a generic message.
+    """
+    msg = str(exc)
+    # Allowlist patterns that are safe to surface directly
+    safe_prefixes = ("Rate limit", "Incorrect API key", "maximum context length",
+                     "Connection error", "OPENAI_API_KEY")
+    if any(msg.startswith(p) for p in safe_prefixes):
+        return msg
+    return "An internal error occurred. Please try again."
+
+
+
 @app.get("/api/health")
 def health():
     """Quick liveness check."""
@@ -96,7 +112,7 @@ def api_refine_prompt():
         return jsonify({"refinedPrompt": refined})
     except Exception as exc:
         log.exception("refinePrompt failed")
-        return jsonify({"error": str(exc)}), 500
+        return jsonify({"error": _safe_error(exc)}), 500
 
 
 @app.post("/api/runDebate")
@@ -113,7 +129,7 @@ def api_run_debate():
         return jsonify(result)
     except Exception as exc:
         log.exception("runDebate failed")
-        return jsonify({"error": str(exc)}), 500
+        return jsonify({"error": _safe_error(exc)}), 500
 
 
 @app.post("/api/generateCode")
@@ -137,13 +153,12 @@ def api_generate_code():
         return jsonify({"error": "'fileInfo.path' is required."}), 400
 
     try:
-        from code_generator import _generate_file  # reuse internal helper
-        content = _generate_file(file_info, refined_prompt, conclusion, [file_info])
+        content = generate_single_file(file_info, refined_prompt, conclusion)
         log.info("generateCode OK (path=%s)", file_info.get("path"))
         return jsonify({"content": content, "path": file_info.get("path")})
     except Exception as exc:
         log.exception("generateCode failed")
-        return jsonify({"error": str(exc)}), 500
+        return jsonify({"error": _safe_error(exc)}), 500
 
 
 @app.post("/api/generateFullProject")
@@ -171,7 +186,7 @@ def api_generate_full_project():
         return jsonify(project)
     except Exception as exc:
         log.exception("generateFullProject failed")
-        return jsonify({"error": str(exc)}), 500
+        return jsonify({"error": _safe_error(exc)}), 500
 
 
 # ── 404 / 405 handlers ────────────────────────────────────────────────────────

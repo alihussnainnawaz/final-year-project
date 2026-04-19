@@ -81,7 +81,7 @@ class UIController {
             div.style.opacity = '0';
             div.style.transition = 'opacity 0.3s ease';
             setTimeout(() => div.remove(), 300);
-        }, CONFIG.NOTIFICATION_DURATION || 4000);
+        }, CONFIG.NOTIFICATION_DURATION);
     }
 
     /**

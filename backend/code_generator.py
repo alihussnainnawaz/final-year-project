@@ -95,6 +95,21 @@ def _generate_file(
     )
 
 
+def generate_single_file(file_info: dict, refined_prompt: str, conclusion: str) -> str:
+    """
+    Public wrapper to generate code for a single file.
+
+    Args:
+        file_info:      {"path": str, "type": str, "description": str}
+        refined_prompt: Refined project specification.
+        conclusion:     Debate conclusion / implementation plan.
+
+    Returns:
+        Generated source code as a string.
+    """
+    return _generate_file(file_info, refined_prompt, conclusion, [file_info])
+
+
 def generate_full_project(refined_prompt: str, conclusion: str) -> dict:
     """
     Plan and generate all files for the project.
