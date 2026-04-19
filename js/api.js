@@ -1,52 +1,49 @@
+/**
+ * Backend API Client
+ * Communicates with the Python Flask backend.
+ */
 class APIClient {
     constructor(baseURL) {
-        this.baseURL = baseURL;
+        this.baseURL = (baseURL || '').replace(/\/$/, '');
     }
-    
+
+    async _post(endpoint, body) {
+        const response = await fetch(`${this.baseURL}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        if (!response.ok) {
+            let errorMsg = `HTTP ${response.status}`;
+            try {
+                const err = await response.json();
+                errorMsg = err.error || errorMsg;
+            } catch (_) {}
+            throw new Error(errorMsg);
+        }
+
+        return response.json();
+    }
+
     async refinePrompt(prompt) {
-        const response = await fetch(`${this.baseURL}/api/refinePrompt`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ prompt })
-        });
-        return response.json();
+        return this._post('/api/refinePrompt', { prompt });
     }
-    
+
     async runDebate(topic) {
-        const response = await fetch(`${this.baseURL}/api/runDebate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ topic })
-        });
-        return response.json();
+        return this._post('/api/runDebate', { topic });
     }
-    
+
     async generateCode(requestDetails) {
-        const response = await fetch(`${this.baseURL}/api/generateCode`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestDetails)
-        });
-        return response.json();
+        return this._post('/api/generateCode', requestDetails);
     }
-    
+
     async generateFullProject(projectDetails) {
-        const response = await fetch(`${this.baseURL}/api/generateFullProject`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(projectDetails)
-        });
+        return this._post('/api/generateFullProject', projectDetails);
+    }
+
+    async healthCheck() {
+        const response = await fetch(`${this.baseURL}/api/health`);
         return response.json();
     }
 }
-
-// Export the APIClient class
-export default APIClient;
